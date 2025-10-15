@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Asset Details - <%= item.uid %></title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --primary-color: #007bff;
+      --success-bg: #e8f5e9;
+      --success-border: #4caf50;
+      --success-text: #1b5e20;
+      --fail-bg: #ffcdd2;
+      --fail-border: #f44336;
+      --fail-text: #b71c1c;
+      --light-gray: #f8f9fa;
+      --gray-border: #dee2e6;
+      --text-color: #343a40;
+      --card-shadow: 0 4px 8px rgba(0,0,0,0.05);
+      --border-radius: 8px;
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 20px; background-color: var(--light-gray); color: var(--text-color); }
+    .container { max-width: 1200px; margin: auto; display: flex; flex-direction: column; gap: 24px; }
+    .grid-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 24px; }
+    .card { background: #fff; padding: 24px; border-radius: var(--border-radius); box-shadow: var(--card-shadow); border: 1px solid var(--gray-border); }
+    h1, h2, h3 { margin-top: 0; color: #000; }
+    h1 { font-size: 2rem; border-bottom: 1px solid var(--gray-border); padding-bottom: 16px; }
+    h2 { font-size: 1.5rem; border-bottom: 1px solid var(--gray-border); padding-bottom: 12px; margin-bottom: 20px; }
+    .ai-remark-box { padding: 20px; border-radius: var(--border-radius); border-left-width: 5px; border-style: solid; }
+    .ai-remark-box h2 { font-size: 1.25rem; border: none; margin-bottom: 8px; }
+    .status-ok { background-color: var(--success-bg); border-color: var(--success-border); color: var(--success-text); }
+    .status-hold { background-color: var(--fail-bg); border-color: var(--fail-border); color: var(--fail-text); }
+    .details-list { display: grid; grid-template-columns: 150px 1fr; gap: 12px; font-size: 0.95rem; }
+    .details-list dt { font-weight: 600; color: #555; }
+    .details-list dd { margin: 0; word-break: break-all; }
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; font-weight: 600; margin-bottom: 8px; }
+    .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid var(--gray-border); border-radius: 4px; font-size: 1rem; }
+    form button { padding: 12px 20px; background: var(--primary-color); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 1rem; font-weight: 600; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <h1>Asset Details: <span style="color: var(--primary-color);"><%= item.uid %></span></h1>
+  </header>
+
+  <% if (assemblyRemark) { %>
+    <div class="ai-remark-box status-<%= assemblyRemark.status %>">
+      <h2>🤖 AI Verdict: <%= assemblyRemark.remark %></h2>
+      <p><strong>Reason:</strong> <%= assemblyRemark.reason %></p>
+    </div>
+  <% } %>
+
+  <div class="grid-container">
+    <div class="card">
+      <h2>Core Information</h2>
+      <dl class="details-list">
+        <dt>Vendor:</dt><dd><%= item.vendor_name || "N/A" %></dd>
+        <dt>Asset Type:</dt><dd><%= item.asset_type || "N/A" %></dd>
+        <dt>Condition:</dt><dd><%= item.condition_lot || "N/A" %></dd>
+        <dt>Remarks:</dt><dd><%= item.remarks || "N/A" %></dd>
+        <dt>Supply Date:</dt><dd><%= item.supply_date ? new Date(item.supply_date).toLocaleDateString() : "N/A" %></dd>
+        <dt>Warranty Expiry:</dt><dd><%= item.warranty_expiry ? new Date(item.warranty_expiry).toLocaleDateString() : "N/A" %></dd>
+        <dt>Last Inspection:</dt><dd><%= item.last_inspection ? new Date(item.last_inspection).toLocaleDateString() : "N/A" %></dd>
+      </dl>
+    </div>
+
+    <div class="card">
+      <h2>📊 AI Contextual Report</h2>
+      <% if (lotStatusSummary) { %>
+        <div style="max-width: 300px; margin: 0 auto 24px auto;">
+          <canvas id="vendorLotChart"></canvas>
+        </div>
+      <% } %>
+      <% if (vendorReport) { %>
+        <div>
+          <h3>Vendor Performance: <%= item.vendor_name %></h3>
+          <p><strong>Total Assets Supplied:</strong> <%= vendorReport.total_assets %></p>
+          <p><strong>Assets in Good Condition:</strong> <%= vendorReport.good_condition %></p>
+        </div>
+      <% } %>
+      <% if (assetTypeReport) { %>
+        <div style="margin-top: 20px;">
+          <h3>Asset Type Overview: <%= item.asset_type %></h3>
+          <p><strong>Total Units in Inventory:</strong> <%= assetTypeReport.total_units %></p>
+        </div>
+      <% } %>
+    </div>
+    
+    <div class="card">
+      <h2>Edit Asset Details</h2>
+      <form method="POST" action="/item/<%= encodeURIComponent(item.uid) %>">
+        <div class="form-group">
+          <label for="condition_lot">Condition:</label>
+          <select id="condition_lot" name="condition_lot">
+            <option value="Good" <%= item.condition_lot === 'Good' ? 'selected' : '' %>>Good</option>
+            <option value="Needs Repair" <%= item.condition_lot === 'Needs Repair' ? 'selected' : '' %>>Needs Repair</option>
+            <option value="Fair" <%= item.condition_lot === 'Fair' ? 'selected' : '' %>>Fair</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="remarks">Remarks:</label>
+          <textarea id="remarks" name="remarks" rows="4"><%= item.remarks || '' %></textarea>
+        </div>
+        <div class="form-group">
+          <label for="last_inspection">Last Inspection Date:</label>
+          <input id="last_inspection" type="date" name="last_inspection" value="<%= item.formatted_last_inspection %>" />
+        </div>
+        <button type="submit">Update Asset</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  const lotStatusData = '<%- JSON.stringify(lotStatusSummary || []) %>';
+  const vendorNameData = '<%- JSON.stringify(item.vendor_name || "Unknown Vendor") %>';
+
+  (function renderLotChart() {
+    const ctx = document.getElementById('vendorLotChart');
+    if (!ctx || !lotStatusData || lotStatusData.length === 0) {
+        return;
+    }
+    
+    const labels = lotStatusData.map(d => d.condition_lot);
+    const data = lotStatusData.map(d => d.count);
+    const backgroundColors = data.map(() => `rgba(${Math.floor(Math.random()*156)+100}, ${Math.floor(Math.random()*156)+100}, ${Math.floor(Math.random()*156)+100}, 0.7)`);
+
+    new Chart(ctx.getContext('2d'), {
+      type: 'pie',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Lot Status',
+          data: data,
+          backgroundColor: backgroundColors,
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { position: 'top' },
+          title: { display: true, text: 'Condition Summary for ' + vendorNameData }
+        }
+      }
+    });
+  })();
+</script>
+
+</body>
+</html>

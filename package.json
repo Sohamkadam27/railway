@@ -1,0 +1,37 @@
+{
+  "name": "railway-asset-tracker",
+  "version": "1.0.0",
+  "description": "An AI-powered asset tracking system for railways.",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "scheduler": "node scheduler.js",
+    "generate-qr": "node generateqr.js",
+    "dev": "nodemon app.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "bcryptjs": "^3.0.2",
+    "body": "^5.1.0",
+    "connect-flash": "^0.1.1",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.2",
+    "ejs": "^3.1.10",
+    "express": "^4.21.2",
+    "express-session": "^1.18.2",
+    "express-validator": "^7.2.1",
+    "jsonwebtoken": "^9.0.2",
+    "mysql2": "^3.15.1",
+    "node-cron": "^4.2.1",
+    "qrcode": "^1.5.4",
+    "uuid": "^13.0.0",
+    "yargs": "^18.0.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
+  }
+}
