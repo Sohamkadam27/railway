@@ -15,15 +15,16 @@
     "react": "^18.2.0",
     "react-chartjs-2": "^5.2.0",
     "react-dom": "^18.2.0",
-    "react-router-dom": "^6.12.1"
+    "react-router-dom": "^6.12.1",
+    "recharts": "^3.3.0"
   },
   "css.validate": false,
-   "tailwindCSS.includeLanguages": {
-   "plaintext": "html",
-   "javascript": "javascript",
-   "typescript": "typescriptreact",
-   "typescriptreact": "typescriptreact"
-},
+  "tailwindCSS.includeLanguages": {
+    "plaintext": "html",
+    "javascript": "javascript",
+    "typescript": "typescriptreact",
+    "typescriptreact": "typescriptreact"
+  },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.0.3",
     "autoprefixer": "^10.4.14",

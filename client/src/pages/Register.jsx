@@ -10,25 +10,30 @@ export default function Register() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  const handleChange = (e) =>
+  const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
+    setError("");
+    setSuccess("");
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     setSuccess("");
     setLoading(true);
+
     try {
       const res = await axios.post(
         "http://localhost:3000/api/auth/register",
         form,
         { withCredentials: true }
       );
-      setSuccess(res.data.message);
+
+      setSuccess(res.data.message || "Registration successful!");
       setForm({ name: "", email: "", password: "" });
     } catch (err) {
       console.error("Register error:", err);
-      setError(err.response?.data?.message || "Registration failed");
+      setError(err.response?.data?.message || "Registration failed. Please try again.");
     } finally {
       setLoading(false);
     }

@@ -32,7 +32,7 @@ export default function AuthForm({
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
 
       {/* Form Container */}
-      <div className="relative z-10 bg-surface/70 backdrop-blur-lg border border-slate-800 shadow-glow rounded-2xl p-8 w-[90%] max-w-md">
+      <div className="relative z-10 bg-slate-900/70 backdrop-blur-lg border border-slate-800 shadow-glow rounded-2xl p-8 w-[90%] max-w-md">
         <h1 className="text-3xl font-bold mb-4 text-center text-accent">{title}</h1>
         <p className="text-sm text-center text-gray-400 mb-6">{subtitle}</p>
 
@@ -48,10 +48,7 @@ export default function AuthForm({
 
             return (
               <div key={key}>
-                <label
-                  htmlFor={key}
-                  className="block text-sm mb-1 capitalize"
-                >
+                <label htmlFor={key} className="block text-sm mb-1 capitalize">
                   {key.replace("_", " ")}
                 </label>
                 <input
@@ -62,7 +59,7 @@ export default function AuthForm({
                   autoComplete={autoComplete}
                   value={form[key]}
                   onChange={onChange}
-                  className="w-full px-3 py-2 rounded bg-slate-900/70 border border-slate-700 focus:outline-none focus:border-accent text-white"
+                  className="w-full px-3 py-2 rounded bg-slate-900/70 border border-slate-700 focus:outline-none focus:border-accent text-white transition"
                 />
               </div>
             );
@@ -83,7 +80,7 @@ export default function AuthForm({
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-2 mt-2 rounded bg-accent text-black font-semibold hover:bg-blue-400 transition-all"
+            className="w-full py-2 mt-2 rounded bg-accent text-black font-semibold hover:bg-blue-400 transition-all disabled:opacity-60"
           >
             {loading ? `${submitText}...` : submitText}
           </button>
@@ -92,12 +89,13 @@ export default function AuthForm({
         {toggleText && toggleAction && (
           <p className="text-center text-sm text-gray-400 mt-4">
             {toggleText}{" "}
-            <span
+            <button
+              type="button"
               onClick={toggleAction}
-              className="text-accent hover:underline cursor-pointer"
+              className="text-accent hover:underline font-semibold"
             >
-              {toggleText.includes("account") ? "Login" : "Register"}
-            </span>
+              {submitText === "Login" ? "Register" : "Login"}
+            </button>
           </p>
         )}
       </div>

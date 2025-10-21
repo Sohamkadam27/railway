@@ -1,66 +1,41 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import Topbar from '../components/Topbar';
-import Container from '../components/Container';
-import StatCard from '../components/StatCard';
-import AssetCard from '../components/AssetCard';
-import AssetsTable from '../components/AssetsTable';
-import axios from 'axios';
+// client/src/pages/Dashboard.jsx
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import Topbar from "../components/Topbar";
+import Container from "../components/Container";
+import StatCard from "../components/StatCard";
+import AssetCard from "../components/AssetCard";
+import AssetsTable from "../components/AssetsTable";
+import TrackFittingCalculator from "../components/TrackFittingCalculator";
+import useFetch from "../hooks/useFetch";
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const [dashData, setDashData] = useState(null);
-  const [assets, setAssets] = useState([]);
-  const [loadingDash, setLoadingDash] = useState(true);
-  const [loadingAssets, setLoadingAssets] = useState(true);
-  const [error, setError] = useState('');
+  const [showCalculator, setShowCalculator] = useState(false);
 
-  // Check authentication on mount
+  // Redirect if not logged in
   useEffect(() => {
-    if (!localStorage.getItem('auth')) navigate('/login');
+    const auth = localStorage.getItem("auth");
+    if (!auth) navigate("/login");
   }, [navigate]);
 
-  // Fetch dashboard stats
-  useEffect(() => {
-    const fetchDashboard = async () => {
-      setLoadingDash(true);
-      setError('');
-      try {
-        const res = await axios.get('http://localhost:3000/api/dashboard', { withCredentials: true });
-        setDashData(res.data);
-      } catch (err) {
-        console.error('Error fetching dashboard:', err);
-        if (err.response?.status === 401) {
-          localStorage.removeItem('auth');
-          navigate('/login');
-        } else {
-          setError('Failed to load dashboard data.');
-        }
-      } finally {
-        setLoadingDash(false);
-      }
-    };
-    fetchDashboard();
-  }, [navigate]);
+  // Fetch dashboard summary and assets list
+  const {
+    data: dashData,
+    loading: loadingDash,
+    error: dashError,
+    refetch: refetchDash,
+  } = useFetch("/dashboard", []);
 
-  // Fetch assets
-  useEffect(() => {
-    const fetchAssets = async () => {
-      setLoadingAssets(true);
-      setError('');
-      try {
-        const res = await axios.get('http://localhost:3000/api/assets', { withCredentials: true });
-        setAssets(res.data || []);
-      } catch (err) {
-        console.error('Error fetching assets:', err);
-        setError('Failed to load assets.');
-      } finally {
-        setLoadingAssets(false);
-      }
-    };
-    fetchAssets();
-  }, []);
+  const {
+    data: assetsData,
+    loading: loadingAssets,
+    error: assetsError,
+    refetch: refetchAssets,
+  } = useFetch("/assets", []);
 
+  const error = dashError || assetsError;
+  const assets = Array.isArray(assetsData) ? assetsData : [];
   const latestAssets = assets.slice(0, 4);
   const assetsSnapshot = assets.slice(0, 5);
 
@@ -68,23 +43,55 @@ export default function Dashboard() {
     <>
       <Topbar />
       <Container>
-        <main className="p-6 space-y-6">
+        <main className="p-6 space-y-6 text-white">
+          {/* Error Display */}
           {error && (
             <div className="text-red-400 bg-red-950/50 p-2 rounded mb-4 text-center">
               {error}
             </div>
           )}
 
-          {/* Stats Section */}
+          {/* Action Buttons */}
+          <div className="flex justify-end mb-4">
+            <button
+              onClick={() => setShowCalculator(true)}
+              className="px-4 py-2 rounded bg-green-600 hover:bg-green-500 text-black font-semibold"
+            >
+              Calculate Fittings
+            </button>
+          </div>
+
+          {/* Dashboard Stats */}
           <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <StatCard title="Total Assets" value={loadingDash ? '...' : dashData?.total ?? '—'} subtitle="Total tracked units" />
-            <StatCard title="Good Condition" value={loadingDash ? '...' : dashData?.good ?? '—'} subtitle="Ready for service" />
-            <StatCard title="Expiring (30d)" value={loadingDash ? '...' : dashData?.soonExpiring ?? '—'} subtitle="Warranty ending soon" />
+            <StatCard
+              title="Total Assets"
+              value={loadingDash ? "..." : dashData?.total ?? "—"}
+              subtitle="Total tracked units"
+            />
+            <StatCard
+              title="Good Condition"
+              value={loadingDash ? "..." : dashData?.good ?? "—"}
+              subtitle="Ready for service"
+            />
+            <StatCard
+              title="Expiring (30d)"
+              value={loadingDash ? "..." : dashData?.soonExpiring ?? "—"}
+              subtitle="Warranty ending soon"
+            />
           </section>
 
           {/* Latest Assets Section */}
           <section className="card">
-            <h3 className="text-lg font-semibold mb-4">Latest Assets</h3>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">Latest Assets</h3>
+              <button
+                onClick={refetchAssets}
+                className="text-sm bg-blue-700 hover:bg-blue-600 px-3 py-1 rounded"
+              >
+                Refresh
+              </button>
+            </div>
+
             {loadingAssets ? (
               <p className="text-gray-400">Loading...</p>
             ) : latestAssets.length === 0 ? (
@@ -95,7 +102,9 @@ export default function Dashboard() {
                   <AssetCard
                     key={asset.uid}
                     item={asset}
-                    onView={() => navigate(`/asset/${encodeURIComponent(asset.uid)}`)}
+                    onView={() =>
+                      navigate(`/asset/${encodeURIComponent(asset.uid)}`)
+                    }
                   />
                 ))}
               </div>
@@ -104,7 +113,16 @@ export default function Dashboard() {
 
           {/* Assets Snapshot Table */}
           <section className="card">
-            <h3 className="font-semibold mb-3">Assets Snapshot</h3>
+            <div className="flex justify-between items-center mb-3">
+              <h3 className="font-semibold">Assets Snapshot</h3>
+              <button
+                onClick={refetchAssets}
+                className="text-sm bg-blue-700 hover:bg-blue-600 px-3 py-1 rounded"
+              >
+                Refresh
+              </button>
+            </div>
+
             <div className="overflow-auto">
               {loadingAssets ? (
                 <p className="text-gray-400">Loading...</p>
@@ -117,6 +135,21 @@ export default function Dashboard() {
           </section>
         </main>
       </Container>
+
+      {/* Track Fitting Calculator Modal */}
+      {showCalculator && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+          onClick={() => setShowCalculator(false)}
+        >
+          <div
+            className="relative w-full max-w-lg"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <TrackFittingCalculator onClose={() => setShowCalculator(false)} />
+          </div>
+        </div>
+      )}
     </>
   );
 }

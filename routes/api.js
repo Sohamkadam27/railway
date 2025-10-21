@@ -13,7 +13,6 @@ function asyncHandler(fn) {
 
 // ----------------------------
 // GET /api/assets
-// Fetch all assets
 // ----------------------------
 router.get('/assets', asyncHandler(async (req, res) => {
   const [rows] = await pool.query('SELECT * FROM rail_tms_db ORDER BY uid DESC');
@@ -22,7 +21,6 @@ router.get('/assets', asyncHandler(async (req, res) => {
 
 // ----------------------------
 // GET /api/assets/:uid
-// Fetch single asset + analysis
 // ----------------------------
 router.get('/assets/:uid', asyncHandler(async (req, res) => {
   const { uid } = req.params;
@@ -33,18 +31,47 @@ router.get('/assets/:uid', asyncHandler(async (req, res) => {
 
   const item = rows[0];
 
-  // Fetch analysis and reports
+  // --- Fetch analysis and reports safely ---
   const assemblyRemark = analysisService.generateAssemblyRemark(item);
-  const lotStatusSummary = await analysisService.getVendorLotStatusSummary(item.vendor_name);
-  const vendorReport = await analysisService.getVendorContext(item.vendor_name);
-  const assetTypeReport = await analysisService.getAssetTypeContext(item.asset_type);
 
-  res.status(200).json({ item, assemblyRemark, lotStatusSummary, vendorReport, assetTypeReport });
+  // ✅ fallback to [] or {}
+  const vendorReport = (await analysisService.getVendorContext(item.vendor_name)) || [];
+  const inventoryReport = (await analysisService.getAssetTypeContext(item.asset_type)) || [];
+
+  // --- If vendorReport empty, try fetching vendor-wide summary ---
+  if (vendorReport.length === 0 && item.vendor_name) {
+    const [vendorRows] = await pool.query(
+      `SELECT vendor_name,
+              COUNT(*) AS total_assets,
+              SUM(CASE WHEN condition_lot = 'Good' THEN 1 ELSE 0 END) AS good_condition,
+              SUM(CASE WHEN condition_lot = 'Needs Repair' THEN 1 ELSE 0 END) AS needs_repair
+       FROM rail_tms_db
+       WHERE vendor_name = ?
+       GROUP BY vendor_name`, [item.vendor_name]
+    );
+    if (vendorRows.length > 0) vendorReport.push(vendorRows[0]);
+  }
+
+  // --- If inventoryReport empty, build one dynamically ---
+  if (inventoryReport.length === 0) {
+    const [invRows] = await pool.query(
+      `SELECT asset_type, COUNT(*) AS total_units
+       FROM rail_tms_db
+       GROUP BY asset_type`
+    );
+    if (invRows.length > 0) inventoryReport.push(...invRows);
+  }
+
+  res.status(200).json({
+    item,
+    assemblyRemark,
+    vendorReport,
+    inventoryReport,
+  });
 }));
 
 // ----------------------------
 // POST /api/assets/:uid
-// Update asset details
 // ----------------------------
 router.post('/assets/:uid', asyncHandler(async (req, res) => {
   const { uid } = req.params;
@@ -52,14 +79,19 @@ router.post('/assets/:uid', asyncHandler(async (req, res) => {
 
   if (!condition_lot) return res.status(400).json({ error: 'condition_lot field is required' });
 
-  const inspectionDateForDb = last_inspection || null;
-
   const sql = `
     UPDATE rail_tms_db
     SET condition_lot = ?, remarks = ?, last_inspection = ?, latitude = ?, longitude = ?
     WHERE uid = ?
   `;
-  await pool.query(sql, [condition_lot, remarks, inspectionDateForDb, latitude || null, longitude || null, uid]);
+  await pool.query(sql, [
+    condition_lot,
+    remarks || null,
+    last_inspection || null,
+    latitude || null,
+    longitude || null,
+    uid,
+  ]);
 
   const [updatedRows] = await pool.query('SELECT * FROM rail_tms_db WHERE uid = ?', [uid]);
   res.status(200).json({ success: true, item: updatedRows[0] });
@@ -67,7 +99,6 @@ router.post('/assets/:uid', asyncHandler(async (req, res) => {
 
 // ----------------------------
 // GET /api/dashboard
-// Dashboard statistics summary
 // ----------------------------
 router.get('/dashboard', asyncHandler(async (req, res) => {
   const [assets] = await pool.query('SELECT condition_lot, warranty_expiry FROM rail_tms_db');
@@ -90,31 +121,26 @@ router.get('/dashboard', asyncHandler(async (req, res) => {
 
 // ----------------------------
 // GET /api/vendors
-// Vendor aggregated report
 // ----------------------------
 router.get('/vendors', asyncHandler(async (req, res) => {
   const data = await analysisService.generateVendorReport();
-  res.status(200).json(data);
+  res.status(200).json(data || []);
 }));
 
 // ----------------------------
 // GET /api/inventory
-// Inventory breakdown
 // ----------------------------
 router.get('/inventory', asyncHandler(async (req, res) => {
   const data = await analysisService.generateInventoryReport();
-  res.status(200).json(data);
+  res.status(200).json(data || []);
 }));
 
 // ----------------------------
-// Global API error handler
+// Global error handler
 // ----------------------------
 router.use((err, req, res, next) => {
   console.error('API Error:', err.stack);
-  res.status(500).json({
-    error: 'Internal Server Error',
-    message: err.message,
-  });
+  res.status(500).json({ error: 'Internal Server Error', message: err.message });
 });
 
 module.exports = router;

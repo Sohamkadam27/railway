@@ -29,13 +29,12 @@ export default function Login() {
         { withCredentials: true }
       );
 
+      // Save user info in localStorage for auth check
       localStorage.setItem("auth", JSON.stringify(res.data.user));
       setSuccess("Login successful! Redirecting...");
-      
-      // Optional delay for UX before redirect
-      setTimeout(() => {
-        navigate("/");
-      }, 500);
+
+      // Redirect after short delay
+      setTimeout(() => navigate("/dashboard"), 500);
     } catch (err) {
       console.error("Login error:", err);
       setError(err.response?.data?.message || "Login failed. Please try again.");
